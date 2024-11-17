@@ -15,8 +15,19 @@ def search_anime(message):
     if anime_name:
         search_url = f'https://animefire.plus/pesquisar/{anime_name.replace(" ", "%20")}'
         response = requests.get(search_url)
+        
+        # Verifique o status da resposta
+        if response.status_code != 200:
+            print(f"Erro ao buscar dados: {response.status_code}")
+            bot.send_message(message.chat.id, "Não foi possível acessar os dados.")
+            return
+
         soup = BeautifulSoup(response.content, 'html.parser')
 
+        # Verifique o conteúdo da resposta para ver se há algo errado
+        print(soup.prettify())  # Adicione esta linha para depuração
+
+        # Tente encontrar os animes
         animes = soup.find_all('article', class_='cardUltimosEps')
 
         if animes:
@@ -44,6 +55,12 @@ def anime_details(call):
         anime_url = anime_links[anime_id]
         
         response = requests.get(anime_url)
+        
+        # Verifique o status da resposta
+        if response.status_code != 200:
+            bot.send_message(call.message.chat.id, "Não foi possível acessar os dados do anime.")
+            return
+
         soup = BeautifulSoup(response.content, 'html.parser')
 
         title = soup.find('h1', class_='quicksand400').text.strip()
@@ -86,6 +103,12 @@ def show_episodes(call):
         anime_url = anime_links[anime_id]
         
         response = requests.get(anime_url)
+        
+        # Verifique o status da resposta
+        if response.status_code != 200:
+            bot.send_message(call.message.chat.id, "Não foi possível acessar os dados dos episódios.")
+            return
+
         soup = BeautifulSoup(response.content, 'html.parser')
 
         episodes_section = soup.find('section', class_='mt-3 mb-2')
@@ -127,4 +150,4 @@ def show_episodes(call):
 
 # Iniciar o bot
 bot.polling()
-    
+            
