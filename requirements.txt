@@ -2,5 +2,3 @@ flask
 requests
 beautifulsoup4
 telebot
-bs4
-telebot.types
