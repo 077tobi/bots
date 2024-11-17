@@ -2,75 +2,128 @@ import telebot
 import requests
 from bs4 import BeautifulSoup
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
-import logging
+import json
 
-# Configura o logging
-logging.basicConfig(level=logging.DEBUG)
-
-# Substitua pelo seu Token do bot
 BOT_TOKEN = '7205848165:AAFueVRtFLGHtTExyoPpHV5b44IoSszOiPg'
 bot = telebot.TeleBot(BOT_TOKEN)
 
-# Função para buscar os últimos episódios
-@bot.message_handler(commands=['episodios'])
-def get_latest_episodes(message):
-    # URL do site
-    url = 'https://animefire.plus/'
+anime_links = {}
 
-    try:
-        # Envia uma requisição para o site
-        response = requests.get(url)
-        
-        # Checa se a requisição foi bem-sucedida
-        if response.status_code != 200:
-            bot.send_message(message.chat.id, f"Erro ao acessar o site. Status Code: {response.status_code}")
-            return
-
-        # Faz o parse do HTML com BeautifulSoup
+@bot.message_handler(commands=['p'])
+def search_anime(message):
+    anime_name = message.text[len('/p '):].strip().lower()
+    if anime_name:
+        search_url = f'https://animefire.plus/pesquisar/{anime_name.replace(" ", "%20")}'
+        response = requests.get(search_url)
         soup = BeautifulSoup(response.content, 'html.parser')
 
-        # Seleciona os elementos que contêm os episódios
-        item_elements = soup.select("div.col-12.col-sm-6.col-md-4.col-lg-6.col-xl-3.divCardUltimosEpsHome")
+        animes = soup.find_all('article', class_='cardUltimosEps')
 
-        if not item_elements:
-            bot.send_message(message.chat.id, "Nenhum episódio encontrado.")
-            return
-
-        # Cria uma lista para armazenar as informações dos episódios
-        episodes = []
-
-        # Loop para extrair as informações dos episódios
-        for item in item_elements:
-            titulo = item.select("h3.animeTitle")[0].text.strip()  # Título do anime
-            link = item.select("a")[0]['href']  # Link para o anime
-            capa = item.select("img.card-img-top.lazy.imgAnimesUltimosEps")[0]['data-src']  # Capa do anime
-            episodio = item.select("span.numEp")[0].text.strip()  # Número do episódio
-
-            # Adiciona as informações do episódio na lista
-            episodes.append({
-                'título': titulo,
-                'link': link,
-                'capa': capa,
-                'episódio': episodio
-            })
-
-        # Envia os episódios para o usuário
-        for episode in episodes:
+        if animes:
             markup = InlineKeyboardMarkup()
-            markup.add(InlineKeyboardButton(text="Assistir", url=episode['link']))
-            
-            bot.send_photo(
-                message.chat.id,
-                episode['capa'],
-                caption=f"**{episode['título']}** - Episódio {episode['episódio']}\n{episode['link']}",
-                reply_markup=markup
-            )
-    
-    except Exception as e:
-        logging.error(f"Erro ao processar a requisição: {e}")
-        bot.send_message(message.chat.id, "Houve um erro ao tentar buscar os episódios.")
+            for index, anime in enumerate(animes):
+                title = anime.find('h3', class_='animeTitle').text.strip()
+                link = anime.find('a')['href']
+                full_link = link if link.startswith('http') else f'https://animefire.plus{link}'
 
-# Inicia o bot
-if __name__ == "__main__":
-    bot.polling(none_stop=True)
+                anime_links[f"anime_{index}"] = full_link
+                markup.add(InlineKeyboardButton(text=title, callback_data=f"anime_{index}"))
+
+            bot.send_message(message.chat.id, "Animes encontrados:", reply_markup=markup)
+        else:
+            bot.send_message(message.chat.id, "Nenhum anime encontrado com esse nome.")
+    else:
+        bot.send_message(message.chat.id, "Por favor, forneça o nome do anime. Exemplo: /p boruto")
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('anime_'))
+def anime_details(call):
+    bot.delete_message(call.message.chat.id, call.message.message_id)
+
+    anime_id = call.data
+    if anime_id in anime_links:
+        anime_url = anime_links[anime_id]
+        
+        response = requests.get(anime_url)
+        soup = BeautifulSoup(response.content, 'html.parser')
+
+        title = soup.find('h1', class_='quicksand400').text.strip()
+
+        synopsis_tag = soup.find('div', class_='divSinopse')
+        if synopsis_tag:
+            synopsis = synopsis_tag.find('span', class_='spanAnimeInfo')
+            if synopsis:
+                synopsis_text = synopsis.text.strip()
+            else:
+                synopsis_text = "Sinopse não disponível"
+        else:
+            synopsis_text = "Sinopse não disponível"
+        
+        truncated_synopsis = synopsis_text[:250] + '...' if len(synopsis_text) > 250 else synopsis_text
+
+        image_tag = soup.find('div', class_='sub_animepage_img').find('img')
+        image_url = image_tag['data-src'] if image_tag else None
+
+        episode_id = f"episodes_{anime_id.split('_')[1]}" 
+        markup = InlineKeyboardMarkup()
+        markup.add(InlineKeyboardButton(text="Episódios", callback_data=episode_id))
+
+        bot.send_photo(
+            call.message.chat.id,
+            photo=image_url,
+            caption=f"**{title}**\n\n{truncated_synopsis}",
+            parse_mode='Markdown',
+            reply_markup=markup
+        )
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('episodes_'))
+def show_episodes(call):
+    bot.delete_message(call.message.chat.id, call.message.message_id)
+
+    anime_index = call.data.split('_')[1]
+    anime_id = f'anime_{anime_index}'
+    
+    if anime_id in anime_links:
+        anime_url = anime_links[anime_id]
+        
+        response = requests.get(anime_url)
+        soup = BeautifulSoup(response.content, 'html.parser')
+
+        episodes_section = soup.find('section', class_='mt-3 mb-2')
+        if episodes_section:
+            episode_links = episodes_section.find_all('a', class_='lEp') 
+            if episode_links:
+                for episode in episode_links:
+                    episode_title = episode.text.strip()
+                    episode_url = episode['href']
+                    full_episode_link = episode_url if episode_url.startswith('http') else f'https://animefire.plus{episode_url}'
+                    
+                    episode_response = requests.get(full_episode_link)
+                    episode_soup = BeautifulSoup(episode_response.content, 'html.parser')
+                    
+                    video_tag = episode_soup.find('video')
+                    if video_tag and 'data-video-src' in video_tag.attrs:
+                        video_src = video_tag['data-video-src']
+                        
+                        video_response = requests.get(video_src)
+                        video_data = json.loads(video_response.text)
+
+                        message_text = f"**{episode_title}**\n\n"
+                        if 'data' in video_data:
+                            for video in video_data['data']:
+                                message_text += f"{video['label']}: {video['src']}\n"
+                        else:
+                            message_text += "Não foi possível obter as informações do vídeo."
+
+                        bot.send_message(call.message.chat.id, message_text, parse_mode='Markdown')
+                    else:
+                        bot.send_message(call.message.chat.id, f"Não foi possível encontrar o vídeo para {episode_title}.")
+
+            else:
+                bot.send_message(call.message.chat.id, "Nenhum episódio disponível.")
+        else:
+            bot.send_message(call.message.chat.id, "Não foi possível encontrar a lista de episódios.")
+    else:
+        bot.send_message(call.message.chat.id, "Anime não encontrado.")
+
+bot.polling()
         
