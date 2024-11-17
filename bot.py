@@ -14,20 +14,22 @@ def search_anime(message):
     anime_name = message.text[len('/p '):].strip().lower()
     if anime_name:
         search_url = f'https://animefire.plus/pesquisar/{anime_name.replace(" ", "%20")}'
-        response = requests.get(search_url)
         
-        # Verifique o status da resposta
+        # Adicionando cabeçalho 'User-Agent' para simular um navegador
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        
+        response = requests.get(search_url, headers=headers)
+
+        # Verificando o status da resposta
         if response.status_code != 200:
             print(f"Erro ao buscar dados: {response.status_code}")
-            bot.send_message(message.chat.id, "Não foi possível acessar os dados.")
+            bot.send_message(message.chat.id, f"Erro ao acessar o site. Status: {response.status_code}")
             return
-
+        
         soup = BeautifulSoup(response.content, 'html.parser')
 
-        # Verifique o conteúdo da resposta para ver se há algo errado
-        print(soup.prettify())  # Adicione esta linha para depuração
-
-        # Tente encontrar os animes
         animes = soup.find_all('article', class_='cardUltimosEps')
 
         if animes:
@@ -56,9 +58,10 @@ def anime_details(call):
         
         response = requests.get(anime_url)
         
-        # Verifique o status da resposta
+        # Verificando o status da resposta
         if response.status_code != 200:
-            bot.send_message(call.message.chat.id, "Não foi possível acessar os dados do anime.")
+            print(f"Erro ao buscar dados: {response.status_code}")
+            bot.send_message(call.message.chat.id, f"Erro ao acessar o site. Status: {response.status_code}")
             return
 
         soup = BeautifulSoup(response.content, 'html.parser')
@@ -104,9 +107,10 @@ def show_episodes(call):
         
         response = requests.get(anime_url)
         
-        # Verifique o status da resposta
+        # Verificando o status da resposta
         if response.status_code != 200:
-            bot.send_message(call.message.chat.id, "Não foi possível acessar os dados dos episódios.")
+            print(f"Erro ao buscar dados: {response.status_code}")
+            bot.send_message(call.message.chat.id, f"Erro ao acessar o site. Status: {response.status_code}")
             return
 
         soup = BeautifulSoup(response.content, 'html.parser')
@@ -150,4 +154,4 @@ def show_episodes(call):
 
 # Iniciar o bot
 bot.polling()
-            
+        
