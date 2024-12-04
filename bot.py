@@ -1,18 +1,22 @@
 import os
-import telebot
-from flask import Flask, request
+from flask import Flask, request, jsonify
 import requests
 from bs4 import BeautifulSoup
 import psycopg2
+from psycopg2.extras import RealDictCursor
+import telebot
 
-# Configurações do Bot
-API_TOKEN = os.getenv('6621058997:AAHbefc8qVjo_-kUDqF4lhBcauRZuO1K_Bo')  # Configurado no ambiente do Vercel
+# Configurações do Bot e Banco de Dados
+API_TOKEN = os.getenv('BOT_TOKEN')  # Token do bot do Telegram
+DATABASE_URL = os.getenv('DATABASE_URL')  # URL do banco PostgreSQL
 bot = telebot.TeleBot(API_TOKEN)
 
-# Configuração do Banco de Dados
-DATABASE_URL = os.getenv('DATABASE_URL')  # URL do banco PostgreSQL
+# Configuração do Flask
+app = Flask(__name__)
+
+# Conexão com o Banco de Dados
 conn = psycopg2.connect(DATABASE_URL, sslmode='require')
-cursor = conn.cursor()
+cursor = conn.cursor(cursor_factory=RealDictCursor)
 
 # Criar tabelas se não existirem
 cursor.execute("""
@@ -32,8 +36,9 @@ cursor.execute("""
 """)
 conn.commit()
 
-# Funções para buscar animes e episódios
+# Funções auxiliares
 def search_animes(query):
+    """Busca animes no site Goyabu"""
     url = f'https://goyabu.to/?s={query}'
     try:
         response = requests.get(url)
@@ -51,6 +56,7 @@ def search_animes(query):
     return []
 
 def get_episodes(anime_url):
+    """Busca episódios de um anime"""
     try:
         response = requests.get(anime_url)
         if response.status_code == 200:
@@ -66,6 +72,7 @@ def get_episodes(anime_url):
     return []
 
 def get_video_link(episode_url):
+    """Obtém o link de vídeo de um episódio"""
     try:
         response = requests.get(episode_url)
         if response.status_code == 200:
@@ -78,53 +85,71 @@ def get_video_link(episode_url):
         print(f"Erro ao buscar link de vídeo: {e}")
     return []
 
-# Comandos do bot
-@bot.message_handler(commands=['start'])
-def start(message):
-    cursor.execute("INSERT INTO usuarios (id) VALUES (%s) ON CONFLICT DO NOTHING", (message.from_user.id,))
-    conn.commit()
-    bot.send_message(message.chat.id, "✅ Você foi registrado! Use /EPS para ver episódios recentes ou /pesquisar para buscar animes.")
-
-@bot.message_handler(commands=['EPS'])
-def eps(message):
-    cursor.execute("SELECT titulo, episodio, link FROM episodios ORDER BY id DESC LIMIT 10")
-    episodes = cursor.fetchall()
-    if episodes:
-        for titulo, episodio, link in episodes:
-            bot.send_message(message.chat.id, f"📺 {titulo} - {episodio}\n[Assista aqui]({link})", parse_mode='Markdown')
-    else:
-        bot.send_message(message.chat.id, "Nenhum episódio recente disponível.")
-
-@bot.message_handler(commands=['pesquisar'])
-def pesquisar(message):
-    bot.send_message(message.chat.id, "Digite o nome do anime que deseja pesquisar:")
-    bot.register_next_step_handler(message, handle_search)
-
-def handle_search(message):
-    query = message.text.strip()
-    animes = search_animes(query)
-    if animes:
-        for anime in animes:
-            bot.send_message(message.chat.id, f"📖 {anime['title']}\n[Link do Anime]({anime['link']})", parse_mode='Markdown')
-    else:
-        bot.send_message(message.chat.id, "Nenhum anime encontrado com esse nome.")
-
-# Configuração do Webhook
-app = Flask(__name__)
-
+# Rotas da API
 @app.route('/webhook', methods=['POST'])
 def webhook():
+    """Recebe atualizações do Telegram via webhook"""
     json_update = request.get_json()
     bot.process_new_updates([telebot.types.Update.de_json(json_update)])
-    return "!", 200
+    return jsonify(success=True)
 
+@app.route('/search', methods=['GET'])
+def search():
+    """Busca animes com base na consulta"""
+    query = request.args.get('query', '')
+    if not query:
+        return jsonify({"error": "A consulta é obrigatória"}), 400
+    animes = search_animes(query)
+    return jsonify(animes)
+
+@app.route('/episodes', methods=['GET'])
+def episodes():
+    """Busca episódios de um anime"""
+    anime_url = request.args.get('anime_url', '')
+    if not anime_url:
+        return jsonify({"error": "A URL do anime é obrigatória"}), 400
+    episodes = get_episodes(anime_url)
+    return jsonify(episodes)
+
+@app.route('/video', methods=['GET'])
+def video():
+    """Obtém o link do vídeo de um episódio"""
+    episode_url = request.args.get('episode_url', '')
+    if not episode_url:
+        return jsonify({"error": "A URL do episódio é obrigatória"}), 400
+    video_links = get_video_link(episode_url)
+    return jsonify(video_links)
+
+@app.route('/users', methods=['GET', 'POST'])
+def users():
+    """Gerencia usuários"""
+    if request.method == 'POST':
+        user_id = request.json.get('id')
+        if not user_id:
+            return jsonify({"error": "O ID do usuário é obrigatório"}), 400
+        cursor.execute("INSERT INTO usuarios (id) VALUES (%s) ON CONFLICT DO NOTHING", (user_id,))
+        conn.commit()
+        return jsonify({"message": "Usuário registrado com sucesso"})
+    else:
+        cursor.execute("SELECT * FROM usuarios")
+        users = cursor.fetchall()
+        return jsonify(users)
+
+@app.route('/episodes/recent', methods=['GET'])
+def recent_episodes():
+    """Retorna os episódios mais recentes"""
+    cursor.execute("SELECT titulo, episodio, link FROM episodios ORDER BY id DESC LIMIT 10")
+    episodes = cursor.fetchall()
+    return jsonify(episodes)
+
+@app.route('/', methods=['GET'])
+def index():
+    """Página inicial"""
+    return "API do Bot Telegram está funcionando!", 200
+
+# Configuração do webhook
 @app.before_first_request
 def setup_webhook():
     bot.remove_webhook()
     bot.set_webhook(url=f"https://{os.getenv('VERCEL_URL')}/webhook")
 
-# Rota padrão para verificação
-@app.route('/', methods=['GET'])
-def index():
-    return "Bot está funcionando!", 200
-                
