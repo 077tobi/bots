@@ -1,37 +1,38 @@
-import sqlite3
+import os
 import telebot
+from flask import Flask, request
 import requests
 from bs4 import BeautifulSoup
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+import psycopg2
 
 # Configurações do Bot
-API_TOKEN = '7205848165:AAFueVRtFLGHtTExyoPpHV5b44IoSszOiPg'  # Substitua pelo seu token
+API_TOKEN = os.getenv('6621058997:AAHbefc8qVjo_-kUDqF4lhBcauRZuO1K_Bo')  # Configurado no ambiente do Vercel
 bot = telebot.TeleBot(API_TOKEN)
 
-# Banco de dados
-db_path = 'loja.db'
-conn = sqlite3.connect(db_path, check_same_thread=False)
+# Configuração do Banco de Dados
+DATABASE_URL = os.getenv('DATABASE_URL')  # URL do banco PostgreSQL
+conn = psycopg2.connect(DATABASE_URL, sslmode='require')
 cursor = conn.cursor()
 
-# Criação de tabelas
+# Criar tabelas se não existirem
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS usuarios (
-        id INTEGER PRIMARY KEY
+        id BIGINT PRIMARY KEY
     )
 """)
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS episodios (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         link TEXT NOT NULL UNIQUE,
         titulo TEXT NOT NULL,
         episodio TEXT NOT NULL,
         imagem TEXT NOT NULL,
-        enviado INTEGER DEFAULT 0
+        enviado BOOLEAN DEFAULT FALSE
     )
 """)
 conn.commit()
 
-# Função para buscar animes
+# Funções para buscar animes e episódios
 def search_animes(query):
     url = f'https://goyabu.to/?s={query}'
     try:
@@ -49,7 +50,6 @@ def search_animes(query):
         print(f"Erro ao buscar animes: {e}")
     return []
 
-# Função para buscar episódios de um anime
 def get_episodes(anime_url):
     try:
         response = requests.get(anime_url)
@@ -65,7 +65,6 @@ def get_episodes(anime_url):
         print(f"Erro ao buscar episódios: {e}")
     return []
 
-# **Função para pegar o link do vídeo de um episódio**
 def get_video_link(episode_url):
     try:
         response = requests.get(episode_url)
@@ -79,68 +78,53 @@ def get_video_link(episode_url):
         print(f"Erro ao buscar link de vídeo: {e}")
     return []
 
-# Comando '/start'
+# Comandos do bot
 @bot.message_handler(commands=['start'])
 def start(message):
-    cursor.execute("INSERT OR IGNORE INTO usuarios (id) VALUES (?)", (message.from_user.id,))
+    cursor.execute("INSERT INTO usuarios (id) VALUES (%s) ON CONFLICT DO NOTHING", (message.from_user.id,))
     conn.commit()
     bot.send_message(message.chat.id, "✅ Você foi registrado! Use /EPS para ver episódios recentes ou /pesquisar para buscar animes.")
 
-# Comando '/EPS'
 @bot.message_handler(commands=['EPS'])
 def eps(message):
-    episodes = cursor.execute("SELECT * FROM episodios ORDER BY id DESC").fetchall()
+    cursor.execute("SELECT titulo, episodio, link FROM episodios ORDER BY id DESC LIMIT 10")
+    episodes = cursor.fetchall()
     if episodes:
-        markup = InlineKeyboardMarkup()
-        for episode in episodes[:10]:  # Limitar aos 10 mais recentes
-            markup.add(InlineKeyboardButton(
-                f"{episode[2]} - {episode[3]}", callback_data=f"select_episode_{episode[1]}"
-            ))
-        bot.send_message(message.chat.id, "📺 **Episódios Recentes:**", reply_markup=markup)
+        for titulo, episodio, link in episodes:
+            bot.send_message(message.chat.id, f"📺 {titulo} - {episodio}\n[Assista aqui]({link})", parse_mode='Markdown')
     else:
         bot.send_message(message.chat.id, "Nenhum episódio recente disponível.")
 
-# Comando '/pesquisar'
 @bot.message_handler(commands=['pesquisar'])
 def pesquisar(message):
     bot.send_message(message.chat.id, "Digite o nome do anime que deseja pesquisar:")
     bot.register_next_step_handler(message, handle_search)
 
-# Manipulador de pesquisa
 def handle_search(message):
     query = message.text.strip()
     animes = search_animes(query)
     if animes:
-        markup = InlineKeyboardMarkup()
         for anime in animes:
-            markup.add(InlineKeyboardButton(anime['title'], callback_data=f"select_anime_{anime['link']}"))
-        bot.send_message(message.chat.id, "📖 **Resultados da Pesquisa:**", reply_markup=markup)
+            bot.send_message(message.chat.id, f"📖 {anime['title']}\n[Link do Anime]({anime['link']})", parse_mode='Markdown')
     else:
         bot.send_message(message.chat.id, "Nenhum anime encontrado com esse nome.")
 
-# Seleção de anime
-@bot.callback_query_handler(func=lambda call: call.data.startswith("select_anime_"))
-def select_anime(call):
-    anime_url = call.data.split("_", 2)[2]
-    episodes = get_episodes(anime_url)
-    if episodes:
-        markup = InlineKeyboardMarkup()
-        for episode in episodes:
-            markup.add(InlineKeyboardButton(episode['text'], callback_data=f"select_episode_{episode['link']}"))
-        bot.edit_message_text("📺 **Episódios Disponíveis:**", call.message.chat.id, call.message.message_id, reply_markup=markup)
-    else:
-        bot.edit_message_text("Nenhum episódio encontrado para este anime.", call.message.chat.id, call.message.message_id)
+# Configuração do Webhook
+app = Flask(__name__)
 
-# Seleção de episódio e obtenção do link de vídeo
-@bot.callback_query_handler(func=lambda call: call.data.startswith("select_episode_"))
-def select_episode(call):
-    episode_url = call.data.split("_", 2)[2]
-    video_links = get_video_link(episode_url)
-    if video_links:
-        for link in video_links:
-            bot.send_message(call.message.chat.id, f"🎥 [Assista ao episódio aqui]({link})", parse_mode='Markdown')
-    else:
-        bot.send_message(call.message.chat.id, "Não foi possível encontrar links de vídeo para este episódio.")
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    json_update = request.get_json()
+    bot.process_new_updates([telebot.types.Update.de_json(json_update)])
+    return "!", 200
 
-# Rodar o bot
-bot.polling(none_stop=True, interval=0)
+@app.before_first_request
+def setup_webhook():
+    bot.remove_webhook()
+    bot.set_webhook(url=f"https://{os.getenv('VERCEL_URL')}/webhook")
+
+# Rota padrão para verificação
+@app.route('/', methods=['GET'])
+def index():
+    return "Bot está funcionando!", 200
+                
