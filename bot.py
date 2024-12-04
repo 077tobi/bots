@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 # Configurações do Bot
-API_TOKEN = 'SEU_TOKEN_AQUI'  # Substitua pelo seu token
+API_TOKEN = '7205848165:AAFueVRtFLGHtTExyoPpHV5b44IoSszOiPg'  # Substitua pelo seu token
 bot = telebot.TeleBot(API_TOKEN)
 
 # Banco de dados
