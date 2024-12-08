@@ -1,9 +1,0 @@
-flask
-requests
-beautifulsoup4
-telebot
-pyTelegramBotAPI
-flask
-psycopg2-binary
-requests
-beautifulsoup4
