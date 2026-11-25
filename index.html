@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Matsuri Night — Compre Robux no Natal</title>
+<meta name="description" content="Robux com preço justo: 100 por R$5, 500 por R$20, 1000 por R$40. Entre no Discord do Matsuri Night.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bangers&family=Outfit:wght@400;600;800&display=swap">
+<style>
+:root{--bg:#1c1236;--fg:#fdf1f6;--card:rgba(44,28,78,.7);--pink:#ff4fa3;--red:#e8452c;--gold:#f6c64a;--green:#2fae66;--muted:#d8b8d0;--border:rgba(246,198,74,.3)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Outfit,sans-serif;background:var(--bg);color:var(--fg);overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:1150px;margin:auto;padding:0 24px;position:relative;z-index:10}
+.display{font-family:Bangers,sans-serif;letter-spacing:.04em}
+.grad{background:linear-gradient(135deg,var(--pink),var(--red));-webkit-background-clip:text;background-clip:text;color:transparent}
+.gold{background:linear-gradient(135deg,#ffe28a,#e89a2c);-webkit-background-clip:text;background-clip:text;color:transparent}
+.glass{background:var(--card);backdrop-filter:blur(14px);border:1px solid var(--border)}
+.btn{position:relative;overflow:hidden;display:inline-flex;padding:1rem 2rem;border-radius:999px;font-weight:800;color:#fff;background:linear-gradient(135deg,var(--pink),var(--red));box-shadow:0 0 40px -5px rgba(255,79,163,.7);transition:.25s}
+.btn:before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent 0 14px,rgba(255,255,255,.18) 14px 28px);background-size:200% 100%;animation:candy 3s linear infinite}
+.btn:after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);transform:skewX(-20deg);animation:shine 2.8s infinite}
+.btn span{position:relative;z-index:1}
+.btn:hover{transform:translateY(-3px) scale(1.04);box-shadow:0 0 60px rgba(255,79,163,.8)}
+.flake{position:fixed;top:-20px;color:rgba(255,255,255,.85);pointer-events:none;z-index:50;animation:fall linear infinite}
+.lights{position:fixed;top:0;left:0;right:0;z-index:40;display:flex;justify-content:space-around;border-top:2px solid rgba(216,184,208,.3);padding-top:4px}
+.bulb{width:12px;height:16px;border-radius:50%;animation:blink 1.4s infinite}
+header{display:flex;justify-content:space-between;align-items:center;padding-top:40px}
+.pill{border-radius:999px;padding:8px 20px;font-weight:600;font-size:14px}
+.hero{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center;padding:64px 24px}
+.tag{display:inline-block;background:rgba(47,174,102,.2);color:var(--green);margin-bottom:16px}
+h1{font-size:clamp(56px,8vw,96px);line-height:1}
+.lead{margin:24px 0 32px;font-size:18px;color:var(--muted);max-width:440px}
+.imgbox{position:relative;animation:float 5s ease-in-out infinite}
+.imgbox img{width:100%;border-radius:24px;border:2px solid rgba(246,198,74,.4);position:relative}
+.imgbox:before{content:"";position:absolute;inset:-16px;background:rgba(255,79,163,.3);filter:blur(48px);border-radius:24px}
+section{padding:64px 0}
+h2{font-size:48px;text-align:center}
+.plans{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:48px}
+.plan{border-radius:24px;padding:32px;text-align:center;position:relative;transition:.3s}
+.plan:hover{transform:translateY(-8px);box-shadow:0 0 40px -5px rgba(255,79,163,.7)}
+.plan.hot{border-color:var(--pink);transform:scale(1.05)}
+.badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--pink);padding:4px 16px;border-radius:999px;font-size:12px;font-weight:800}
+.small{font-size:13px;text-transform:uppercase;letter-spacing:.15em;color:var(--muted)}
+.num{font-size:64px;margin-top:16px}.price{font-size:30px;font-weight:800;margin:24px 0}
+.note{text-align:center;margin-top:32px;color:var(--muted);font-size:14px}
+.how{max-width:860px;margin:auto;border-radius:24px;padding:40px}
+.how li{list-style:none;font-size:18px;margin-top:16px}.how b.n{color:var(--pink)}
+.cta{text-align:center}.cta p{color:var(--muted);margin:16px auto 32px;max-width:560px}
+footer{text-align:center;color:var(--muted);font-size:14px;padding-bottom:32px;position:relative;z-index:10}
+@keyframes candy{to{background-position:56px 0}}@keyframes shine{0%,60%{left:-60%}100%{left:130%}}
+@keyframes fall{to{transform:translateY(110vh) rotate(360deg)}}
+@keyframes blink{0%,100%{opacity:1;filter:drop-shadow(0 0 8px currentColor)}50%{opacity:.35;filter:none}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+@media(max-width:768px){.hero,.plans{grid-template-columns:1fr}.plan.hot{transform:none}}
+</style></head><body>
+<div class="lights" id="lights"></div><div id="snow"></div>
+<div class="wrap"><header><span class="display grad" style="font-size:30px">MATSURI NIGHT</span>
+<a class="glass pill" href="https://discord.gg/aVpBJAYp7" target="_blank">Discord →</a></header></div>
+<div class="wrap hero"><div><p class="tag pill">🎄 Especial de Natal</p>
+<h1 class="display">Quer comprar <span class="gold">Robux?</span></h1>
+<p class="lead">Faça parte da nossa comunidade! Muito mais que um projeto — uma nova família. Jogue • Conecte • Divirta-se.</p>
+<a class="btn" href="https://discord.gg/aVpBJAYp7" target="_blank"><span>🎁 Comprar no Discord</span></a></div>
+<div class="imgbox"><img src="matsuri.png" alt="Matsuri Night - venda de Robux"></div></div>
+<section class="wrap"><h2 class="display">🎅 Preços de <span class="grad">Natal</span></h2><div class="plans">
+<div class="plan glass"><p class="small">Iniciante</p><p class="num display gold">100</p><b>ROBUX</b><p class="price">R$ 5,00</p><a class="btn" href="https://discord.gg/aVpBJAYp7" target="_blank"><span>🎁 Comprar</span></a></div>
+<div class="plan glass hot"><span class="badge">🔥 Mais vendido</span><p class="num display gold">500</p><b>ROBUX</b><p class="price">R$ 20,00</p><a class="btn" href="https://discord.gg/aVpBJAYp7" target="_blank"><span>🎁 Comprar</span></a></div>
+<div class="plan glass"><p class="small">Melhor valor</p><p class="num display gold">1000</p><b>ROBUX</b><p class="price">R$ 40,00</p><a class="btn" href="https://discord.gg/aVpBJAYp7" target="_blank"><span>🎁 Comprar</span></a></div>
+</div><p class="note">💳 No cartão há acréscimo de 6%.</p></section>
+<section class="wrap"><div class="how glass"><h2 class="display gold" style="text-align:left;font-size:40px">📜 Como funciona</h2><ol>
+<li><b class="n">1.</b> Entre no nosso Discord e no grupo.</li>
+<li><b class="n">2.</b> Para transferir Robux, é preciso estar no grupo há mais de <b>15 dias</b>.</li>
+<li><b class="n">3.</b> Escolha o pacote, pague e receba seus Robux!</li></ol></div></section>
+<section class="wrap cta"><h2 class="display">Não fique de fora! ⛄</h2><p>Acompanhe nossos eventos, novidades e fortaleça a comunidade.</p>
+<a class="btn" href="https://discord.gg/aVpBJAYp7" target="_blank"><span>🎁 Entrar no Discord</span></a></section>
+<footer>© 2026 Matsuri Night • Feliz Natal 🎄</footer>
+<script>
+const c=["#ff4fa3","#f6c64a","#2fae66","#e8452c"],L=document.getElementById("lights");
+for(let i=0;i<28;i++){const b=document.createElement("span");b.className="bulb";b.style.background=b.style.color=c[i%4];b.style.animationDelay=(i%4)*.35+"s";L.appendChild(b)}
+const S=document.getElementById("snow");
+for(let i=0;i<45;i++){const f=document.createElement("span");f.className="flake";f.textContent=i%4?"❄":"🌸";f.style.left=Math.random()*100+"%";f.style.fontSize=10+Math.random()*16+"px";f.style.animationDuration=6+Math.random()*10+"s";f.style.animationDelay=-Math.random()*15+"s";S.appendChild(f)}
+</script></body></html>
